@@ -1,13 +1,46 @@
+// Last Modified: 2025-04-19 23:55:00
 import fs from 'fs';
 import path from 'path';
+
+interface Prompt {
+  id: string;
+  name: string;
+  title: string;
+  content: string;
+  tags: string[];
+  model_preferences: {
+    temperature: number;
+  };
+  dependencies: string[];
+  createdAt: number;
+  updatedAt: number;
+}
 
 const repoDir = path.join(process.cwd(), 'downloaded-repo');
 const agentsDir = path.join(repoDir, 'agents');
 const instructionsDir = path.join(repoDir, 'instructions');
 const promptsDir = path.join(repoDir, 'prompts'); // Just in case there are prompts here
 
-const prompts: any[] = [];
+const prompts: Prompt[] = [];
 const nameToId: Record<string, string> = {};
+
+export function extractTitle(file: string, content: string): string {
+  let title = file
+    .replace('.agent.md', '')
+    .replace('.instructions.md', '')
+    .replace('.prompt.md', '')
+    .replace('.md', '');
+
+  const titleMatch = content.match(/^#\s+(.+)$/m);
+  if (titleMatch) {
+    title = titleMatch[1].trim();
+  }
+  return title;
+}
+
+export function generateId(file: string, category: string): string {
+  return `gh_${category}_${file.replace(/[^a-zA-Z0-9]/g, '_')}`;
+}
 
 function processDir(dir: string, category: string) {
   if (!fs.existsSync(dir)) return;
@@ -18,22 +51,11 @@ function processDir(dir: string, category: string) {
     
     const content = fs.readFileSync(path.join(dir, file), 'utf-8');
     
-    // Extract title from first # Heading or fallback to filename
-    let title = file
-      .replace('.agent.md', '')
-      .replace('.instructions.md', '')
-      .replace('.prompt.md', '')
-      .replace('.md', '');
-      
-    const titleMatch = content.match(/^#\s+(.+)$/m);
-    if (titleMatch) {
-      title = titleMatch[1].trim();
-    }
-
-    const id = `gh_${category}_${file.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const title = extractTitle(file, content);
+    const id = generateId(file, category);
     nameToId[file] = id;
 
-    prompts.push({
+    const prompt: Prompt = {
       id,
       name: file,
       title,
@@ -43,7 +65,8 @@ function processDir(dir: string, category: string) {
       dependencies: [], // Will populate in second pass
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    });
+    };
+    prompts.push(prompt);
   }
 }
 

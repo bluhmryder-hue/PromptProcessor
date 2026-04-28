@@ -1,0 +1,17 @@
+# Requirements
+
+Last Modified: 2025-04-19 23:49:00
+
+## 🛠 Prerequisites
+- Node.js >= 20
+- npm >= 10
+
+## 📦 Core Dependencies
+- React 19
+- Vite 6
+- TypeScript 5
+- Tailwind CSS 4
+
+## 🔧 Scripting
+- tsx (for running TypeScript scripts)
+- fs-extra (optional, but recommended for file ops)

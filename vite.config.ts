@@ -1,4 +1,5 @@
 import tailwindcss from '@tailwindcss/vite';
+// Last Modified: 2025-04-19 23:55:00
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
