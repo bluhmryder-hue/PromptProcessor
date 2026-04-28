@@ -30,7 +30,8 @@ function processDir(dir: string, category: string) {
       title = titleMatch[1].trim();
     }
 
-    const id = `gh_${category}_${file.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    // Generate a General-Specific ID: [origin]_[category]_[filename_slug]
+    const id = `upef_${category}_${file.toLowerCase().replace(/\./g, '_').replace(/[^a-z0-9_]/g, '')}`;
     nameToId[file] = id;
 
     prompts.push({
@@ -53,21 +54,30 @@ processDir(promptsDir, 'prompt');
 
 // Second pass: find dependencies based on filenames mentioned in the content
 const allFileNames = Object.keys(nameToId);
+
+const filenameToRegex = new Map<string, RegExp>();
+for (const fileName of allFileNames) {
+  filenameToRegex.set(
+    fileName,
+    new RegExp(`(?<!\\{\\{CALL:\\s*)${fileName.replace(/\\./g, '\\.')}`, 'g'),
+  );
+}
+
 for (const prompt of prompts) {
   const deps = new Set<string>();
-  
+
   for (const fileName of allFileNames) {
     if (fileName !== prompt.name && prompt.content.includes(fileName)) {
       deps.add(nameToId[fileName]);
-      
+
       // We will also replace literal mentions of the filename with our {{CALL: filename}} syntax
       // so the PromptLab can resolve them dynamically.
       // We use a global regex to replace it, but we have to be careful not to double-wrap it.
-      const regex = new RegExp(`(?<!\\{\\{CALL:\\s*)${fileName.replace(/\\./g, '\\.')}`, 'g');
+      const regex = filenameToRegex.get(fileName)!;
       prompt.content = prompt.content.replace(regex, `{{CALL: ${fileName}}}`);
     }
   }
-  
+
   prompt.dependencies = Array.from(deps);
 }
 
