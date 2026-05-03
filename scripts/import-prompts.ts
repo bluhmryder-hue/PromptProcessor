@@ -53,6 +53,16 @@ processDir(promptsDir, 'prompt');
 
 // Second pass: find dependencies based on filenames mentioned in the content
 const allFileNames = Object.keys(nameToId);
+
+// Pre-compile regex patterns for filenames to avoid O(N*M) regex compilations
+const fileNameRegexMap = new Map<string, RegExp>();
+for (const fileName of allFileNames) {
+  fileNameRegexMap.set(
+    fileName,
+    new RegExp(`(?<!\\{\\{CALL:\\s*)${fileName.replace(/\\./g, '\\.')}`, 'g')
+  );
+}
+
 for (const prompt of prompts) {
   const deps = new Set<string>();
   
@@ -63,7 +73,7 @@ for (const prompt of prompts) {
       // We will also replace literal mentions of the filename with our {{CALL: filename}} syntax
       // so the PromptLab can resolve them dynamically.
       // We use a global regex to replace it, but we have to be careful not to double-wrap it.
-      const regex = new RegExp(`(?<!\\{\\{CALL:\\s*)${fileName.replace(/\\./g, '\\.')}`, 'g');
+      const regex = fileNameRegexMap.get(fileName)!;
       prompt.content = prompt.content.replace(regex, `{{CALL: ${fileName}}}`);
     }
   }
