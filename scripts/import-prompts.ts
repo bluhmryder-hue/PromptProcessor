@@ -6,7 +6,21 @@ const agentsDir = path.join(repoDir, 'agents');
 const instructionsDir = path.join(repoDir, 'instructions');
 const promptsDir = path.join(repoDir, 'prompts'); // Just in case there are prompts here
 
-const prompts: any[] = [];
+interface Prompt {
+  id: string;
+  name: string;
+  title: string;
+  content: string;
+  tags: string[];
+  model_preferences: {
+    temperature: number;
+  };
+  dependencies: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+const prompts: Prompt[] = [];
 const nameToId: Record<string, string> = {};
 
 function processDir(dir: string, category: string) {
