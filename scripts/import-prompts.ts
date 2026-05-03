@@ -4,10 +4,14 @@ import path from 'path';
 const repoDir = path.join(process.cwd(), 'downloaded-repo');
 const agentsDir = path.join(repoDir, 'agents');
 const instructionsDir = path.join(repoDir, 'instructions');
-const promptsDir = path.join(repoDir, 'prompts'); // Just in case there are prompts here
+const promptsDir = path.join(repoDir, 'prompts');
 
 const prompts: any[] = [];
 const nameToId: Record<string, string> = {};
+
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function processDir(dir: string, category: string) {
   if (!fs.existsSync(dir)) return;
@@ -18,7 +22,6 @@ function processDir(dir: string, category: string) {
     
     const content = fs.readFileSync(path.join(dir, file), 'utf-8');
     
-    // Extract title from first # Heading or fallback to filename
     let title = file
       .replace('.agent.md', '')
       .replace('.instructions.md', '')
@@ -40,7 +43,7 @@ function processDir(dir: string, category: string) {
       content,
       tags: ['github', 'copilot', category],
       model_preferences: { temperature: 0.2 },
-      dependencies: [], // Will populate in second pass
+      dependencies: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -51,27 +54,42 @@ processDir(agentsDir, 'agent');
 processDir(instructionsDir, 'instruction');
 processDir(promptsDir, 'prompt');
 
-// Second pass: find dependencies based on filenames mentioned in the content
-const allFileNames = Object.keys(nameToId);
-for (const prompt of prompts) {
-  const deps = new Set<string>();
-  
-  for (const fileName of allFileNames) {
-    if (fileName !== prompt.name && prompt.content.includes(fileName)) {
-      deps.add(nameToId[fileName]);
+// Second pass: find dependencies using a single-pass optimized regex
+const allFileNames = Object.keys(nameToId).sort((a, b) => b.length - a.length);
+
+if (allFileNames.length > 0) {
+  const escapedNames = allFileNames.map(escapeRegExp);
+  // Pattern Explanation:
+  // 1. (?<!{{CALL:\s*)         -> Avoid double-wrapping existing calls
+  // 2. (?<![\w\-.])            -> Ensure no leading filename-valid chars (whole word)
+  // 3. (file1|file2|...)       -> Match any of our filenames (longest first)
+  // 4. (?![\w\-])              -> Ensure not followed by alphanumeric or dash
+  // 5. (?!\.[\w\-])            -> Ensure not followed by a dot that is part of an extension (allows trailing sentence period)
+  const pattern = `(?<!{{CALL:\\s*)(?<![\\w\\-.])(${escapedNames.join('|')})(?![\\w\\-])(?!\\.[\\w\\-])`;
+  const masterRegex = new RegExp(pattern, 'g');
+
+  for (const prompt of prompts) {
+    const deps = new Set<string>();
+
+    prompt.content = prompt.content.replace(masterRegex, (match: string) => {
+      // Only replace if it's NOT the prompt itself
+      if (match === prompt.name) return match;
       
-      // We will also replace literal mentions of the filename with our {{CALL: filename}} syntax
-      // so the PromptLab can resolve them dynamically.
-      // We use a global regex to replace it, but we have to be careful not to double-wrap it.
-      const regex = new RegExp(`(?<!\\{\\{CALL:\\s*)${fileName.replace(/\\./g, '\\.')}`, 'g');
-      prompt.content = prompt.content.replace(regex, `{{CALL: ${fileName}}}`);
-    }
+      const id = nameToId[match];
+      deps.add(id);
+      return `{{CALL: ${match}}}`;
+    });
+
+    prompt.dependencies = Array.from(deps);
   }
-  
-  prompt.dependencies = Array.from(deps);
 }
 
 const outputPath = path.join(process.cwd(), 'src', 'lib', 'github-prompts.json');
+const outputDir = path.dirname(outputPath);
+if (!fs.existsSync(outputDir)) {
+  fs.mkdirSync(outputDir, { recursive: true });
+}
+
 fs.writeFileSync(outputPath, JSON.stringify(prompts, null, 2));
 
 console.log(`Successfully imported ${prompts.length} prompts to ${outputPath}`);
