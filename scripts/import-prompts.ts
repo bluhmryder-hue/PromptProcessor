@@ -1,15 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const repoDir = path.join(process.cwd(), 'downloaded-repo');
-const agentsDir = path.join(repoDir, 'agents');
-const instructionsDir = path.join(repoDir, 'instructions');
-const promptsDir = path.join(repoDir, 'prompts'); // Just in case there are prompts here
-
-const prompts: any[] = [];
-const nameToId: Record<string, string> = {};
-
-function processDir(dir: string, category: string) {
+export function processDir(dir: string, category: string, prompts: any[], nameToId: Record<string, string>) {
   if (!fs.existsSync(dir)) return;
   
   const files = fs.readdirSync(dir);
@@ -47,31 +40,55 @@ function processDir(dir: string, category: string) {
   }
 }
 
-processDir(agentsDir, 'agent');
-processDir(instructionsDir, 'instruction');
-processDir(promptsDir, 'prompt');
+export function importPrompts() {
+  const repoDir = path.join(process.cwd(), 'downloaded-repo');
+  const agentsDir = path.join(repoDir, 'agents');
+  const instructionsDir = path.join(repoDir, 'instructions');
+  const promptsDir = path.join(repoDir, 'prompts'); // Just in case there are prompts here
 
-// Second pass: find dependencies based on filenames mentioned in the content
-const allFileNames = Object.keys(nameToId);
-for (const prompt of prompts) {
-  const deps = new Set<string>();
-  
-  for (const fileName of allFileNames) {
-    if (fileName !== prompt.name && prompt.content.includes(fileName)) {
-      deps.add(nameToId[fileName]);
-      
-      // We will also replace literal mentions of the filename with our {{CALL: filename}} syntax
-      // so the PromptLab can resolve them dynamically.
-      // We use a global regex to replace it, but we have to be careful not to double-wrap it.
-      const regex = new RegExp(`(?<!\\{\\{CALL:\\s*)${fileName.replace(/\\./g, '\\.')}`, 'g');
-      prompt.content = prompt.content.replace(regex, `{{CALL: ${fileName}}}`);
+  const prompts: any[] = [];
+  const nameToId: Record<string, string> = {};
+
+  processDir(agentsDir, 'agent', prompts, nameToId);
+  processDir(instructionsDir, 'instruction', prompts, nameToId);
+  processDir(promptsDir, 'prompt', prompts, nameToId);
+
+  // Second pass: find dependencies based on filenames mentioned in the content
+  const allFileNames = Object.keys(nameToId);
+  for (const prompt of prompts) {
+    const deps = new Set<string>();
+
+    for (const fileName of allFileNames) {
+      if (fileName !== prompt.name && prompt.content.includes(fileName)) {
+        deps.add(nameToId[fileName]);
+
+        // We will also replace literal mentions of the filename with our {{CALL: filename}} syntax
+        // so the PromptLab can resolve them dynamically.
+        // We use a global regex to replace it, but we have to be careful not to double-wrap it.
+        const regex = new RegExp(`(?<!\\{\\{CALL:\\s*)${fileName.replace(/\\./g, '\\.')}`, 'g');
+        prompt.content = prompt.content.replace(regex, `{{CALL: ${fileName}}}`);
+      }
     }
+
+    prompt.dependencies = Array.from(deps);
   }
-  
-  prompt.dependencies = Array.from(deps);
+
+  const outputDir = path.join(process.cwd(), 'src', 'lib');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+  const outputPath = path.join(outputDir, 'github-prompts.json');
+  fs.writeFileSync(outputPath, JSON.stringify(prompts, null, 2));
+
+  console.log(`Successfully imported ${prompts.length} prompts to ${outputPath}`);
 }
 
-const outputPath = path.join(process.cwd(), 'src', 'lib', 'github-prompts.json');
-fs.writeFileSync(outputPath, JSON.stringify(prompts, null, 2));
+// Check if script is run directly
+const isMain = process.argv[1] && (
+  process.argv[1] === fileURLToPath(import.meta.url) ||
+  process.argv[1].endsWith('import-prompts.ts')
+);
 
-console.log(`Successfully imported ${prompts.length} prompts to ${outputPath}`);
+if (isMain) {
+  importPrompts();
+}
