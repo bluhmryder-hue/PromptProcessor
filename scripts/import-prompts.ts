@@ -72,6 +72,10 @@ for (const prompt of prompts) {
 }
 
 const outputPath = path.join(process.cwd(), 'src', 'lib', 'github-prompts.json');
+const outputDir = path.dirname(outputPath);
+if (!fs.existsSync(outputDir)) {
+  fs.mkdirSync(outputDir, { recursive: true });
+}
 fs.writeFileSync(outputPath, JSON.stringify(prompts, null, 2));
 
 console.log(`Successfully imported ${prompts.length} prompts to ${outputPath}`);
