@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KudoAI Persona Browser
 // @namespace    Ryder.Tools
-// @version      1.2.0
+// @version      1.3.0
 // @description  Browse, classify, tag, filter, favorite, and copy the complete KudoAI persona library.
 // @author       Ryder
 // @homepageURL  https://github.com/bluhmryder-hue/PromptProcessor
@@ -296,6 +296,44 @@
         '.rp-tags-edit button{flex:0 0 auto}.rp-small-button{padding:5px 8px}#rp-prompt{display:block;width:100%;height:92px;resize:vertical;padding:8px;background:#303134;color:#eee;border:1px solid #555;border-radius:7px;font:11px/1.4 ui-monospace,monospace}',
         '.rp-actions{display:flex;gap:6px;margin-top:6px}.rp-actions button{flex:1}#rp-copy{background:#6655cc}#rp-message{font-size:11px;color:#aaa;min-height:14px;margin-top:4px}',
         '@media(max-width:520px){#ryder-persona-panel{right:6px;bottom:68px;width:calc(100vw - 12px);height:calc(100vh - 82px)}#ryder-persona-launcher{right:12px;bottom:12px}.rp-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.rp-tags{grid-template-columns:repeat(2,minmax(0,1fr))}.rp-preview-controls{grid-template-columns:1fr 1fr}}'
+,
+        // Compact layout: approximately half the previous padding and gaps.
+        '#ryder-persona-panel{resize:both;min-width:320px;min-height:360px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px)}',
+        '.rp-header{padding:5.5px 7px;gap:6px}',
+        '.rp-header button{padding:3.5px 5px}',
+        '.rp-search-row{padding:4.5px 5.5px 2.5px}',
+        '#rp-search{padding:5px}',
+        '.rp-controls{gap:3px;padding:2.5px 5.5px 4px}',
+        '.rp-controls select,.rp-length input,.rp-filter-line select{padding:3.5px}',
+        '.rp-advanced{margin:0 5.5px 3.5px}',
+        '.rp-advanced summary{padding:3.5px 4.5px}',
+        '.rp-advanced-inner{padding:0 4.5px 4.5px;gap:4px}',
+        '.rp-filter-line{gap:4px}',
+        '.rp-length{gap:3px}',
+        '.rp-tags{gap:2.5px;max-height:105px}',
+        '.rp-statusbar{gap:4px;padding:3.5px 6px}',
+        '.rp-random,.rp-small-button{padding:3.5px 5px}',
+        '#rp-results{padding:3.5px 4.5px;min-height:80px;resize:vertical;overflow:auto;flex:0 1 45%;height:45%;max-height:70%}',
+        '.rp-row{gap:2.5px;margin-bottom:2px}',
+        '.rp-item{padding:3.5px 4.5px}',
+        '.rp-item-meta{gap:2.5px;margin-top:1.5px}',
+        '.rp-chip{padding:1px 3px}',
+        '.rp-star{width:30px;flex-basis:30px}',
+        '.rp-page{gap:6px;padding:3.5px 5px}',
+        '.rp-page button{padding:3.5px 5px}',
+        '#rp-preview{padding:4.5px 5.5px;max-height:200px}',
+        '.rp-preview-head{gap:4px;margin-bottom:3px}',
+        '.rp-preview-controls{gap:3px;margin-bottom:3px}',
+        '.rp-preview-controls select,.rp-preview-controls input{padding:3px}',
+        '.rp-tags-edit{gap:3px;margin-bottom:3px}',
+        '.rp-tags-edit input{padding:3.5px}',
+        '.rp-tags-edit button{padding:3.5px 5px}',
+        '#rp-prompt{height:72px;padding:4px}',
+        '.rp-actions{gap:3px;margin-top:3px}',
+        '.rp-actions button{padding:3.5px 5px}',
+        '#rp-message{min-height:10px;margin-top:2px}',
+        '@media(max-width:520px){#ryder-persona-panel{min-width:280px;min-height:320px}.rp-controls{gap:3px;padding:2.5px 5px}.rp-tags{gap:2px}}'
+
     ].join('\n');
     (document.head || document.documentElement).appendChild(style);
 
