@@ -207,4 +207,53 @@ test.describe('KudoAI Persona Browser — BDD acceptance scenarios', () => {
     const after = await list.boundingBox();
     expect(after.height).toBeGreaterThan(before.height + 20);
   });
+
+  test('Given the live KudoAI release dataset, when the final alphabetical persona is searched, then records beyond the first page remain reachable', async ({ page }) => {
+    const response = await fetch(
+      'https://cdn.jsdelivr.net/npm/@kudoai/ai-personas@1/dist/ai-personas.min.json',
+      { signal: AbortSignal.timeout(30000) }
+    );
+    expect(response.ok).toBeTruthy();
+    const dataset = await response.json();
+    const usableEntries = Object.entries(dataset)
+      .filter(([, data]) => data && typeof data.prompt === 'string')
+      .sort(([a], [b]) => a.localeCompare(b, undefined, {
+        sensitivity: 'base',
+        numeric: true
+      }));
+
+    expect(usableEntries.length).toBeGreaterThan(1500);
+    const finalAlphabeticalName = usableEntries[usableEntries.length - 1][0];
+
+    // Run the real production data through the same Tampermonkey API shims as the fixture tests.
+    await page.setContent('<!doctype html><html><head><title>Live dataset test host</title></head><body></body></html>');
+    await page.evaluate(({ source, liveDataset }) => {
+      const store = Object.create(null);
+      window.GM_getResourceText = name => {
+        if (name !== 'ai-personas') throw new Error('Unexpected resource: ' + name);
+        return JSON.stringify(liveDataset);
+      };
+      window.GM_getValue = (key, fallback) =>
+        Object.prototype.hasOwnProperty.call(store, key) ? structuredClone(store[key]) : fallback;
+      window.GM_setValue = (key, value) => {
+        store[key] = structuredClone(value);
+      };
+      window.__tampermonkeyStore = store;
+
+      const script = document.createElement('script');
+      script.textContent = source;
+      document.head.appendChild(script);
+    }, { source: USERSCRIPT, liveDataset: dataset });
+
+    const launcher = page.locator('#ryder-persona-launcher');
+    await expect(launcher).toContainText(usableEntries.length.toLocaleString());
+    await launcher.click();
+
+    await page.locator('#rp-search-mode').selectOption('names');
+    await page.locator('#rp-search').fill(finalAlphabeticalName);
+
+    await expect(page.locator('#rp-count')).toContainText('1 matches');
+    await expect(page.locator('#rp-results')).toContainText(finalAlphabeticalName);
+  });
+
 });
