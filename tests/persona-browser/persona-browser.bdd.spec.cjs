@@ -177,18 +177,31 @@ test.describe('KudoAI Persona Browser — BDD acceptance scenarios', () => {
     await page.mouse.up();
 
     const panel = page.locator('#ryder-persona-panel');
+    await panel.evaluate(node => {
+      node.style.left = '400px';
+      node.style.top = '100px';
+      node.style.right = 'auto';
+      node.style.bottom = 'auto';
+    });
     const before = await panel.boundingBox();
-    const resizeStyle = await panel.evaluate(node => getComputedStyle(node).resize);
-    expect(resizeStyle).toBe('both');
+    const handle = page.locator('#rp-panel-resize');
+    await expect(handle).toBeVisible();
+    await expect(handle).toHaveAttribute('aria-label', 'Resize entire browser');
 
-    await page.mouse.move(before.x + before.width - 4, before.y + before.height - 4);
+    const handleBox = await handle.boundingBox();
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(before.x + before.width + 100, before.y + before.height + 80, { steps: 12 });
+    await page.mouse.move(handleBox.x + handleBox.width / 2 + 110, handleBox.y + handleBox.height / 2 + 85, { steps: 12 });
     await page.mouse.up();
 
     const after = await panel.boundingBox();
-    expect(after.width).toBeGreaterThan(before.width + 35);
-    expect(after.height).toBeGreaterThan(before.height + 25);
+    expect(after.width).toBeGreaterThan(before.width + 70);
+    expect(after.height).toBeGreaterThan(before.height + 55);
+
+    const saved = await page.evaluate(() => window.__tampermonkeyStore['ryder-ai-personas-panel-size']);
+    expect(saved).toBeTruthy();
+    expect(saved.width).toBeGreaterThan(before.width + 70);
+    expect(saved.height).toBeGreaterThan(before.height + 55);
   });
 
   test('Given the results list is visible, when its resize handle is dragged, then the list height changes independently', async ({ page }) => {
@@ -196,16 +209,20 @@ test.describe('KudoAI Persona Browser — BDD acceptance scenarios', () => {
 
     const list = page.locator('#rp-results');
     const before = await list.boundingBox();
-    const resizeStyle = await list.evaluate(node => getComputedStyle(node).resize);
-    expect(resizeStyle).toBe('vertical');
+    const handle = page.locator('#rp-results-grip');
+    await expect(handle).toBeVisible();
+    await expect(handle).toHaveAttribute('aria-label', 'Resize results area');
 
-    await page.mouse.move(before.x + before.width - 4, before.y + before.height - 4);
+    const handleBox = await handle.boundingBox();
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(before.x + before.width - 4, before.y + before.height + 65, { steps: 10 });
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2 + 70, { steps: 10 });
     await page.mouse.up();
 
     const after = await list.boundingBox();
-    expect(after.height).toBeGreaterThan(before.height + 20);
+    expect(after.height).toBeGreaterThan(before.height + 25);
+    const saved = await page.evaluate(() => window.__tampermonkeyStore['ryder-ai-personas-results-height']);
+    expect(saved).toBeGreaterThan(before.height + 25);
   });
 
   test('Given the live KudoAI release dataset, when the final alphabetical persona is searched, then records beyond the first page remain reachable', async ({ page }) => {
@@ -254,6 +271,50 @@ test.describe('KudoAI Persona Browser — BDD acceptance scenarios', () => {
 
     await expect(page.locator('#rp-count')).toContainText('1 matches');
     await expect(page.locator('#rp-results')).toContainText(finalAlphabeticalName);
+  });
+
+
+  test('Given the panel was resized, when it is closed and reopened, then its saved dimensions are restored', async ({ page }) => {
+    await page.locator('#ryder-persona-launcher').click();
+    const panel = page.locator('#ryder-persona-panel');
+    await panel.evaluate(node => {
+      node.style.left = '400px';
+      node.style.top = '100px';
+      node.style.right = 'auto';
+      node.style.bottom = 'auto';
+    });
+    const handle = page.locator('#rp-panel-resize');
+    const box = await handle.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 90, box.y + box.height / 2 + 70, { steps: 8 });
+    await page.mouse.up();
+
+    const expected = await panel.boundingBox();
+    await page.locator('#rp-close').click();
+    await page.locator('#ryder-persona-launcher').click();
+    const restored = await panel.boundingBox();
+
+    expect(Math.abs(restored.width - expected.width)).toBeLessThanOrEqual(2);
+    expect(Math.abs(restored.height - expected.height)).toBeLessThanOrEqual(2);
+  });
+
+  test('Given the results area was resized, when the panel is closed and reopened, then its saved height is restored', async ({ page }) => {
+    await page.locator('#ryder-persona-launcher').click();
+    const list = page.locator('#rp-results');
+    const grip = page.locator('#rp-results-grip');
+    const box = await grip.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 65, { steps: 8 });
+    await page.mouse.up();
+
+    const expected = await list.boundingBox();
+    await page.locator('#rp-close').click();
+    await page.locator('#ryder-persona-launcher').click();
+    const restored = await list.boundingBox();
+
+    expect(Math.abs(restored.height - expected.height)).toBeLessThanOrEqual(3);
   });
 
 });
