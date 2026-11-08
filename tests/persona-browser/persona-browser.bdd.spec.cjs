@@ -93,7 +93,7 @@ test.describe('KudoAI Persona Browser — BDD acceptance scenarios', () => {
     await expect(page.locator('#rp-results')).not.toContainText('Creative Writing Coach');
 
     await page.locator('#rp-advanced summary').click();
-    const pythonTag = page.locator('.rp-tag-option').filter({ hasText: /^Python\s/ });
+    const pythonTag = page.locator('.rp-tag-option').filter({ hasText: /^Python/ });
     await expect(pythonTag).toBeVisible();
     await pythonTag.locator('input').check();
 
@@ -134,7 +134,7 @@ test.describe('KudoAI Persona Browser — BDD acceptance scenarios', () => {
 
     await page.mouse.move(headerBox.x + 90, headerBox.y + 15);
     await page.mouse.down();
-    await page.mouse.move(headerBox.x + 190, headerBox.y + 95, { steps: 8 });
+    await page.mouse.move(headerBox.x - 10, headerBox.y + 95, { steps: 8 });
     await page.mouse.up();
 
     const after = await panel.boundingBox();
