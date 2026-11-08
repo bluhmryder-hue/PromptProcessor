@@ -1,0 +1,12 @@
+{
+  "name": "kudoai-persona-browser-bdd",
+  "private": true,
+  "version": "1.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "test": "playwright test --reporter=list"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0"
+  }
+}
