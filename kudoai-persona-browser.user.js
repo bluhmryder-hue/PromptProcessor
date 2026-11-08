@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KudoAI Persona Browser
 // @namespace    Ryder.Tools
-// @version      1.3.0
+// @version      1.3.1
 // @description  Browse, classify, tag, filter, favorite, and copy the complete KudoAI persona library.
 // @author       Ryder
 // @homepageURL  https://github.com/bluhmryder-hue/PromptProcessor
@@ -24,7 +24,8 @@
         recent: PREFIX + 'recent',
         last: PREFIX + 'last',
         customTags: PREFIX + 'custom-tags',
-        categoryOverrides: PREFIX + 'category-overrides'
+        categoryOverrides: PREFIX + 'category-overrides',
+        panelPosition: PREFIX + 'panel-position'
     };
     const PAGE_SIZE_DEFAULT = 100;
 
@@ -299,7 +300,9 @@
 ,
         // Compact layout: approximately half the previous padding and gaps.
         '#ryder-persona-panel{resize:both;min-width:320px;min-height:360px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px)}',
-        '.rp-header{padding:5.5px 7px;gap:6px}',
+        '.rp-header{padding:5.5px 7px;gap:6px;cursor:grab;touch-action:none;user-select:none}',
+        '.rp-header:active{cursor:grabbing}',
+        '.rp-header button{cursor:pointer;touch-action:auto}',
         '.rp-header button{padding:3.5px 5px}',
         '.rp-search-row{padding:4.5px 5.5px 2.5px}',
         '#rp-search{padding:5px}',
@@ -396,6 +399,7 @@
     const favoriteButton = el('rp-favorite');
     const copyButton = el('rp-copy');
     const message = el('rp-message');
+    const panelHeader = panel.querySelector('.rp-header');
 
     let selected = null;
     let currentPage = 0;
@@ -730,9 +734,12 @@
     launcher.addEventListener('click', () => {
         const opening = panel.style.display !== 'flex';
         panel.style.display = opening ? 'flex' : 'none';
-        if (opening) searchInput.focus();
+        if (opening) {
+            restorePanelPosition();
+            searchInput.focus();
+        }
     });
-    el('rp-close').addEventListener('click', () => { panel.style.display = 'none'; });
+    el('rp-close').addEventListener('click', () => { savePanelPosition(); panel.style.display = 'none'; });
 
     for (const id of [
         'rp-search', 'rp-category', 'rp-view', 'rp-letter', 'rp-sort',
@@ -809,6 +816,84 @@
             promptBox.select();
             message.textContent = 'Clipboard access was blocked. Press Ctrl+C to copy the selected text.';
         }
+    });
+
+
+    // Drag the panel by its title bar. Save its position through Tampermonkey.
+    function restorePanelPosition() {
+        const saved = readSetting(KEYS.panelPosition, null);
+        if (!saved || !Number.isFinite(Number(saved.left)) || !Number.isFinite(Number(saved.top))) return;
+
+        const rect = panel.getBoundingClientRect();
+        const left = Math.max(8, Math.min(Number(saved.left), window.innerWidth - rect.width - 8));
+        const top = Math.max(8, Math.min(Number(saved.top), window.innerHeight - rect.height - 8));
+        panel.style.left = left + 'px';
+        panel.style.top = top + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+    }
+
+    function savePanelPosition() {
+        const rect = panel.getBoundingClientRect();
+        writeSetting(KEYS.panelPosition, {
+            left: Math.round(rect.left),
+            top: Math.round(rect.top)
+        });
+    }
+
+    panelHeader.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || event.target.closest('button,input,select,textarea,a')) return;
+        event.preventDefault();
+
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const startRect = panel.getBoundingClientRect();
+        const startLeft = startRect.left;
+        const startTop = startRect.top;
+
+        // Switch from right/bottom anchoring to left/top positioning on first drag.
+        panel.style.left = startLeft + 'px';
+        panel.style.top = startTop + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+
+        panelHeader.setPointerCapture(event.pointerId);
+
+        const onMove = moveEvent => {
+            const rect = panel.getBoundingClientRect();
+            const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+            const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
+            const left = Math.max(8, Math.min(startLeft + moveEvent.clientX - startX, maxLeft));
+            const top = Math.max(8, Math.min(startTop + moveEvent.clientY - startY, maxTop));
+            panel.style.left = left + 'px';
+            panel.style.top = top + 'px';
+        };
+
+        const onEnd = endEvent => {
+            if (panelHeader.hasPointerCapture(endEvent.pointerId)) {
+                panelHeader.releasePointerCapture(endEvent.pointerId);
+            }
+            panelHeader.removeEventListener('pointermove', onMove);
+            panelHeader.removeEventListener('pointerup', onEnd);
+            panelHeader.removeEventListener('pointercancel', onEnd);
+            savePanelPosition();
+        };
+
+        panelHeader.addEventListener('pointermove', onMove);
+        panelHeader.addEventListener('pointerup', onEnd);
+        panelHeader.addEventListener('pointercancel', onEnd);
+    });
+
+    window.addEventListener('resize', () => {
+        if (panel.style.display !== 'flex') return;
+        const rect = panel.getBoundingClientRect();
+        const left = Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8));
+        const top = Math.max(8, Math.min(rect.top, window.innerHeight - rect.height - 8));
+        panel.style.left = left + 'px';
+        panel.style.top = top + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        savePanelPosition();
     });
 
     const previousSelection = readSetting(KEYS.last, '');
