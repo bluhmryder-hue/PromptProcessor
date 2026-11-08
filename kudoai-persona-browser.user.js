@@ -313,7 +313,7 @@
         '.rp-tags{gap:2.5px;max-height:105px}',
         '.rp-statusbar{gap:4px;padding:3.5px 6px}',
         '.rp-random,.rp-small-button{padding:3.5px 5px}',
-        '#rp-results{padding:3.5px 4.5px;min-height:80px;resize:vertical;overflow:auto;flex:0 1 45%;height:45%;max-height:70%}',
+        '#rp-results{padding:3.5px 4.5px;min-height:80px;resize:vertical;overflow:auto;flex:0 1 auto;height:45%;max-height:70%}',
         '.rp-row{gap:2.5px;margin-bottom:2px}',
         '.rp-item{padding:3.5px 4.5px}',
         '.rp-item-meta{gap:2.5px;margin-top:1.5px}',
