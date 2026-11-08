@@ -90,7 +90,7 @@ test.describe('KudoAI Persona Browser — BDD acceptance scenarios', () => {
     await page.locator('#rp-category').selectOption('Software & Technology');
 
     await expect(page.locator('#rp-results')).toContainText('Python Programming Assistant');
-    await page.locator('#rp-results')).not.toContainText('Creative Writing Coach');
+    await expect(page.locator('#rp-results')).not.toContainText('Creative Writing Coach');
 
     await page.locator('#rp-advanced summary').click();
     const pythonTag = page.locator('.rp-tag-option').filter({ hasText: /^Python\s/ });
