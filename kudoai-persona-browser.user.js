@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KudoAI Persona Browser
 // @namespace    Ryder.Tools
-// @version      1.3.1
+// @version      1.4.0
 // @description  Browse, classify, tag, filter, favorite, and copy the complete KudoAI persona library.
 // @author       Ryder
 // @homepageURL  https://github.com/bluhmryder-hue/PromptProcessor
@@ -25,7 +25,9 @@
         last: PREFIX + 'last',
         customTags: PREFIX + 'custom-tags',
         categoryOverrides: PREFIX + 'category-overrides',
-        panelPosition: PREFIX + 'panel-position'
+        panelPosition: PREFIX + 'panel-position',
+        panelSize: PREFIX + 'panel-size',
+        resultsHeight: PREFIX + 'results-height'
     };
     const PAGE_SIZE_DEFAULT = 100;
 
@@ -299,7 +301,7 @@
         '@media(max-width:520px){#ryder-persona-panel{right:6px;bottom:68px;width:calc(100vw - 12px);height:calc(100vh - 82px)}#ryder-persona-launcher{right:12px;bottom:12px}.rp-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.rp-tags{grid-template-columns:repeat(2,minmax(0,1fr))}.rp-preview-controls{grid-template-columns:1fr 1fr}}'
 ,
         // Compact layout: approximately half the previous padding and gaps.
-        '#ryder-persona-panel{resize:both;min-width:320px;min-height:360px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px)}',
+        '#ryder-persona-panel{resize:none;min-width:320px;min-height:360px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px)}',
         '.rp-header{padding:5.5px 7px;gap:6px;cursor:grab;touch-action:none;user-select:none}',
         '.rp-header:active{cursor:grabbing}',
         '.rp-header button{cursor:pointer;touch-action:auto}',
@@ -316,7 +318,7 @@
         '.rp-tags{gap:2.5px;max-height:105px}',
         '.rp-statusbar{gap:4px;padding:3.5px 6px}',
         '.rp-random,.rp-small-button{padding:3.5px 5px}',
-        '#rp-results{padding:3.5px 4.5px;min-height:80px;resize:vertical;overflow:auto;flex:0 1 auto;height:45%;max-height:70%}',
+        '#rp-results{padding:3.5px 4.5px;min-height:80px;resize:none;overflow:auto;flex:0 1 45%;height:45%;max-height:70%}',
         '.rp-row{gap:2.5px;margin-bottom:2px}',
         '.rp-item{padding:3.5px 4.5px}',
         '.rp-item-meta{gap:2.5px;margin-top:1.5px}',
@@ -335,9 +337,16 @@
         '.rp-actions{gap:3px;margin-top:3px}',
         '.rp-actions button{padding:3.5px 5px}',
         '#rp-message{min-height:10px;margin-top:2px}',
-        '@media(max-width:520px){#ryder-persona-panel{min-width:280px;min-height:320px}.rp-controls{gap:3px;padding:2.5px 5px}.rp-tags{gap:2px}}'
+        '@media(max-width:520px){#ryder-persona-panel{min-width:280px;min-height:320px}.rp-controls{gap:3px;padding:2.5px 5px}.rp-tags{gap:2px}}',
+        // Explicit resize controls: these work independently of browser-native resize handles.
+        '#rp-panel-resize{position:absolute;right:3px;bottom:3px;z-index:20;width:25px;height:25px;padding:0;border:1px solid #8176c4;border-radius:5px;background:#51449b;color:#fff;font-size:17px;line-height:22px;cursor:nwse-resize;touch-action:none;user-select:none;box-shadow:0 1px 4px #0008}',
+        '#rp-panel-resize:hover{background:#7564d4}',
+        '#rp-results-grip{height:12px;min-height:12px;flex:0 0 12px;display:flex;align-items:center;justify-content:center;position:relative;z-index:5;border-top:1px solid #555;border-bottom:1px solid #444;background:#303136;color:#bbb;cursor:ns-resize;touch-action:none;user-select:none;font-size:13px;line-height:10px;letter-spacing:3px}',
+        '#rp-results-grip:hover,#rp-results-grip:focus{background:#51449b;color:white;outline:none}',
+        '#rp-results-grip:focus-visible,#rp-panel-resize:focus-visible{outline:2px solid #b7aaff;outline-offset:1px}',
+        '#rp-panel-resize:active,#rp-results-grip:active{background:#6655cc}',
 
-    ].join('\n');
+    ].join('\\n');
     (document.head || document.documentElement).appendChild(style);
 
     const launcher = document.createElement('button');
@@ -366,7 +375,7 @@
             '<div class="rp-filter-line"><label><input id="rp-custom-only" type="checkbox"> Only personas with my custom tags</label></div>' +
         '</div></details>' +
         '<div class="rp-statusbar"><span id="rp-count" aria-live="polite"></span><button id="rp-random" class="rp-random" type="button">Random match</button><button id="rp-reset" class="rp-small-button" type="button">Reset filters</button></div>' +
-        '<div id="rp-results"></div><div class="rp-page"><button id="rp-prev" type="button">Previous</button><span id="rp-page-label"></span><button id="rp-next" type="button">Next</button></div>' +
+        '<div id="rp-results"></div><div id="rp-results-grip" role="separator" aria-orientation="horizontal" aria-label="Resize results area" tabindex="0" title="Drag to resize results">⋯</div><div class="rp-page"><button id="rp-prev" type="button">Previous</button><span id="rp-page-label"></span><button id="rp-next" type="button">Next</button></div>' +
         '<div id="rp-preview"><div class="rp-preview-head"><strong id="rp-name">Select a persona</strong></div>' +
             '<div class="rp-preview-controls"><select id="rp-persona-category" aria-label="Persona category"></select><div id="rp-auto-category"></div></div>' +
             '<div class="rp-tags-edit"><input id="rp-custom-tags" type="text" placeholder="Your tags, separated by commas"><button id="rp-save-tags" type="button">Save tags</button></div>' +
@@ -374,6 +383,7 @@
             '<div class="rp-actions"><button id="rp-favorite" type="button" disabled>☆ Favorite</button><button id="rp-copy" type="button" disabled>Copy full prompt</button></div>' +
             '<div id="rp-message" role="status" aria-live="polite"></div></div>';
 
+    panel.insertAdjacentHTML('beforeend', '<button id="rp-panel-resize" type="button" aria-label="Resize entire browser" title="Drag to resize browser">◢</button>');
     (document.body || document.documentElement).append(launcher, panel);
 
     const el = id => panel.querySelector('#' + id);
@@ -387,6 +397,8 @@
     const tagModeSelect = el('rp-tag-mode');
     const tagsContainer = el('rp-tags');
     const results = el('rp-results');
+    const resultsGrip = el('rp-results-grip');
+    const panelResizeHandle = el('rp-panel-resize');
     const countLabel = el('rp-count');
     const pageLabel = el('rp-page-label');
     const previousButton = el('rp-prev');
@@ -735,6 +747,7 @@
         const opening = panel.style.display !== 'flex';
         panel.style.display = opening ? 'flex' : 'none';
         if (opening) {
+            restorePanelDimensions();
             restorePanelPosition();
             searchInput.focus();
         }
@@ -884,16 +897,159 @@
         panelHeader.addEventListener('pointercancel', onEnd);
     });
 
+
+    // Persisted dimensions use explicit pointer handles rather than native CSS resize.
+    function clampNumber(value, minimum, maximum) {
+        return Math.max(minimum, Math.min(value, maximum));
+    }
+
+    function restorePanelDimensions() {
+        const saved = readSetting(KEYS.panelSize, null);
+        if (saved && Number.isFinite(Number(saved.width)) && Number.isFinite(Number(saved.height))) {
+            const width = clampNumber(Number(saved.width), 320, Math.max(320, window.innerWidth - 16));
+            const height = clampNumber(Number(saved.height), 360, Math.max(360, window.innerHeight - 16));
+            panel.style.width = width + 'px';
+            panel.style.height = height + 'px';
+        }
+
+        const savedResultsHeight = Number(readSetting(KEYS.resultsHeight, 0)) || 0;
+        if (savedResultsHeight > 0) setResultsHeight(savedResultsHeight);
+    }
+
+    function savePanelDimensions() {
+        const rect = panel.getBoundingClientRect();
+        writeSetting(KEYS.panelSize, {
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+        });
+    }
+
+    function setResultsHeight(requestedHeight) {
+        const maximum = Math.max(80, Math.floor(panel.clientHeight * 0.62));
+        const height = clampNumber(requestedHeight, 80, maximum);
+        results.style.flex = '0 0 ' + height + 'px';
+        results.style.height = height + 'px';
+        return height;
+    }
+
+    function saveResultsHeight() {
+        writeSetting(KEYS.resultsHeight, Math.round(results.getBoundingClientRect().height));
+    }
+
+    panelResizeHandle.addEventListener('pointerdown', event => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+
+        const startRect = panel.getBoundingClientRect();
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const startWidth = startRect.width;
+        const startHeight = startRect.height;
+
+        // Anchor the top-left corner so the visible bottom-right grip tracks the pointer.
+        panel.style.left = startRect.left + 'px';
+        panel.style.top = startRect.top + 'px';
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+
+        panelResizeHandle.setPointerCapture(event.pointerId);
+
+        const onMove = moveEvent => {
+            const maximumWidth = Math.max(320, window.innerWidth - startRect.left - 8);
+            const maximumHeight = Math.max(360, window.innerHeight - startRect.top - 8);
+            const width = clampNumber(startWidth + moveEvent.clientX - startX, 320, maximumWidth);
+            const height = clampNumber(startHeight + moveEvent.clientY - startY, 360, maximumHeight);
+            panel.style.width = width + 'px';
+            panel.style.height = height + 'px';
+        };
+
+        const onEnd = endEvent => {
+            if (panelResizeHandle.hasPointerCapture(endEvent.pointerId)) {
+                panelResizeHandle.releasePointerCapture(endEvent.pointerId);
+            }
+            panelResizeHandle.removeEventListener('pointermove', onMove);
+            panelResizeHandle.removeEventListener('pointerup', onEnd);
+            panelResizeHandle.removeEventListener('pointercancel', onEnd);
+            savePanelDimensions();
+            savePanelPosition();
+        };
+
+        panelResizeHandle.addEventListener('pointermove', onMove);
+        panelResizeHandle.addEventListener('pointerup', onEnd);
+        panelResizeHandle.addEventListener('pointercancel', onEnd);
+    });
+
+    resultsGrip.addEventListener('pointerdown', event => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+
+        const startY = event.clientY;
+        const startHeight = results.getBoundingClientRect().height;
+        resultsGrip.setPointerCapture(event.pointerId);
+
+        const onMove = moveEvent => {
+            setResultsHeight(startHeight + moveEvent.clientY - startY);
+        };
+
+        const onEnd = endEvent => {
+            if (resultsGrip.hasPointerCapture(endEvent.pointerId)) {
+                resultsGrip.releasePointerCapture(endEvent.pointerId);
+            }
+            resultsGrip.removeEventListener('pointermove', onMove);
+            resultsGrip.removeEventListener('pointerup', onEnd);
+            resultsGrip.removeEventListener('pointercancel', onEnd);
+            saveResultsHeight();
+        };
+
+        resultsGrip.addEventListener('pointermove', onMove);
+        resultsGrip.addEventListener('pointerup', onEnd);
+        resultsGrip.addEventListener('pointercancel', onEnd);
+    });
+
+    resultsGrip.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+        event.preventDefault();
+        const direction = event.key === 'ArrowDown' ? 1 : -1;
+        setResultsHeight(results.getBoundingClientRect().height + direction * 24);
+        saveResultsHeight();
+    });
+
+    panelResizeHandle.addEventListener('keydown', event => {
+        if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        event.preventDefault();
+
+        const rect = panel.getBoundingClientRect();
+        const step = event.shiftKey ? 50 : 20;
+        const widthDelta = event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0;
+        const heightDelta = event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0;
+        const width = clampNumber(rect.width + widthDelta, 320, Math.max(320, window.innerWidth - rect.left - 8));
+        const height = clampNumber(rect.height + heightDelta, 360, Math.max(360, window.innerHeight - rect.top - 8));
+        panel.style.width = width + 'px';
+        panel.style.height = height + 'px';
+        savePanelDimensions();
+    });
+
     window.addEventListener('resize', () => {
         if (panel.style.display !== 'flex') return;
         const rect = panel.getBoundingClientRect();
-        const left = Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8));
-        const top = Math.max(8, Math.min(rect.top, window.innerHeight - rect.height - 8));
+        const width = clampNumber(rect.width, 320, Math.max(320, window.innerWidth - 16));
+        const height = clampNumber(rect.height, 360, Math.max(360, window.innerHeight - 16));
+        panel.style.width = width + 'px';
+        panel.style.height = height + 'px';
+        const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+        const top = Math.max(8, Math.min(rect.top, window.innerHeight - height - 8));
         panel.style.left = left + 'px';
         panel.style.top = top + 'px';
         panel.style.right = 'auto';
         panel.style.bottom = 'auto';
         savePanelPosition();
+        savePanelDimensions();
+        if (Number(readSetting(KEYS.resultsHeight, 0)) > 0) {
+            setResultsHeight(Number(readSetting(KEYS.resultsHeight, 0)));
+            saveResultsHeight();
+        }
     });
 
     const previousSelection = readSetting(KEYS.last, '');
