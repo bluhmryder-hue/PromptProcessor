@@ -346,7 +346,7 @@
         '#rp-results-grip:focus-visible,#rp-panel-resize:focus-visible{outline:2px solid #b7aaff;outline-offset:1px}',
         '#rp-panel-resize:active,#rp-results-grip:active{background:#6655cc}',
 
-    ].join('\\n');
+    ].join('\n');
     (document.head || document.documentElement).appendChild(style);
 
     const launcher = document.createElement('button');
