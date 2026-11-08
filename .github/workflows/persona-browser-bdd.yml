@@ -1,0 +1,40 @@
+name: Persona browser BDD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'kudoai-persona-browser.user.js'
+      - 'tests/persona-browser/**'
+      - '.github/workflows/persona-browser-bdd.yml'
+  pull_request:
+    paths:
+      - 'kudoai-persona-browser.user.js'
+      - 'tests/persona-browser/**'
+      - '.github/workflows/persona-browser-bdd.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-bdd:
+    name: Chromium browser acceptance tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated test dependencies
+        run: npm install --no-audit --no-fund
+        working-directory: tests/persona-browser
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: tests/persona-browser
+      - name: Run BDD acceptance suite
+        run: npm test
+        working-directory: tests/persona-browser
